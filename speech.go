@@ -1,4 +1,4 @@
-package tts
+package edge_tts_go
 
 import (
 	"crypto/sha256"
