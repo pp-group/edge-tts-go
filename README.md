@@ -5,3 +5,6 @@ language and voice support: https://learn.microsoft.com/en-us/azure/cognitive-se
 
 ## QUICK START
 speech_test.go TestGenTTS()
+
+## LICENSE: MIT
+pp-group/edge-tts-go is licensed under the **MIT License**
