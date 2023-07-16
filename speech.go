@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"edge-tts-go/biz/service/tts/edge"
+	"github.com/pp-group/edge-tts-go/biz/service/tts/edge"
 )
 
 type Speech struct {

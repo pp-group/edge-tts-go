@@ -3,7 +3,7 @@ package edge_tts_go
 import (
 	"testing"
 
-	"edge-tts-go/biz/service/tts/edge"
+	"github.com/pp-group/edge-tts-go/biz/service/tts/edge"
 )
 
 func TestGenTTS(t *testing.T) {
@@ -15,7 +15,7 @@ func TestGenTTS(t *testing.T) {
 	t.Logf("genTTS success, fileName: %s", fileName)
 }
 
-// genTTS template use edge-tts-go
+// genTTS template use github.com/pp-group/edge-tts-go
 func genTTS(text string) (string, error) {
 	c, err := edge.NewCommunicate(text)
 	if err != nil {
