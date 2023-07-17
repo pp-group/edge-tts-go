@@ -14,6 +14,7 @@ type Speech struct {
 	file     *os.File
 	Folder   string
 	fileName string
+	storage  IStorage
 }
 
 func (s *Speech) GetFileName() string {
@@ -23,10 +24,14 @@ func (s *Speech) GetFileName() string {
 func (s *Speech) GenTTS() error {
 	fileName := s.Folder + "/" + generateHashName(s.Text, s.VoiceLangRegion) + ".mp3"
 	s.fileName = fileName
-	if s.isSpeechExist(fileName) {
+	isExist, err := s.storage.Exist(fileName)
+	if err != nil {
+		return err
+	}
+	if isExist {
 		return nil
 	}
-	err := s.createFile(fileName)
+	err = s.storage.Create(fileName)
 	if err != nil {
 		return err
 	}
@@ -67,35 +72,12 @@ func (s *Speech) gen() error {
 	// write data, sort by index
 	for _, v := range audioData {
 		for _, data := range v {
-			s.file.Write(data)
+			s.storage.Write(data)
 		}
 	}
+	s.storage.Close()
 	return nil
-}
 
-func (s *Speech) isSpeechExist(fileName string) bool {
-	file, err := os.Open(fileName)
-	if os.IsNotExist(err) {
-		return false
-	}
-	file.Close()
-	return true
-}
-
-func (s *Speech) createFile(fileName string) error {
-	// if file exist than return
-	// else create it
-	file, err := os.Open(fileName)
-	if err == nil {
-		return nil
-	} else {
-		file, err = os.Create(fileName)
-		if err != nil {
-			return err
-		}
-	}
-	s.file = file
-	return nil
 }
 
 func generateHashName(name, voice string) string {

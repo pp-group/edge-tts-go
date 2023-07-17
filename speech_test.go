@@ -24,7 +24,8 @@ func genTTS(text string) (string, error) {
 
 	speech := &Speech{
 		Communicate: c,
-		Folder:      "templateaudio",
+		Folder:      "temporaryaudio",
+		storage:     &FileStorage{},
 	}
 	err = speech.GenTTS()
 	if err != nil {
