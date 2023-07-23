@@ -22,13 +22,15 @@ func genTTS(text string) (string, error) {
 		return "", err
 	}
 
-	speech := &Speech{
-		Communicate: c,
-		Folder:      "templateaudio",
+	speech, err := NewLocalSpeech(c, "templateaudio")
+	if err != nil {
+		return "", err
 	}
+
 	err = speech.GenTTS()
 	if err != nil {
 		return "", err
 	}
-	return speech.GetFileName(), nil
+
+	return speech.URL(speech.fileName)
 }
