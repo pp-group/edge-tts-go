@@ -32,5 +32,5 @@ func genTTS(text string) (string, error) {
 		return "", err
 	}
 
-	return speech.URL(speech.fileName)
+	return speech.URL(speech.FileName)
 }
