@@ -175,3 +175,28 @@ func generateHashName(name, voice string) string {
 	hash := sha256.Sum256([]byte(name))
 	return fmt.Sprintf("%s_%s", voice, hex.EncodeToString(hash[:]))
 }
+
+type OssSpeechFactory struct {
+	endpoint string
+	ak       string
+	sk       string
+	bucket   string
+	folder   string
+}
+
+func NewOssSpeechFactory(endpoint, ak, sk, bucket, folder string) *OssSpeechFactory {
+	return &OssSpeechFactory{
+		endpoint: endpoint,
+		ak:       ak,
+		sk:       sk,
+		bucket:   bucket,
+		folder:   folder,
+	}
+}
+
+func (factory *OssSpeechFactory) OssSpeech(c *edge.Communicate, folder string) (*OssSpeech, error) {
+	if folder != "" {
+		return NewOssSpeech(c, factory.endpoint, factory.ak, factory.sk, folder, factory.bucket)
+	}
+	return NewOssSpeech(c, factory.endpoint, factory.ak, factory.sk, factory.folder, factory.bucket)
+}
