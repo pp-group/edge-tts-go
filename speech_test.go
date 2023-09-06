@@ -27,7 +27,9 @@ func genTTS(text string) (string, error) {
 		return "", err
 	}
 
-	err = speech.GenTTS()
+	_, callback := speech.GenTTS()
+
+	err = callback()
 	if err != nil {
 		return "", err
 	}
