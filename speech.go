@@ -5,13 +5,14 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/pp-group/edge-tts-go/biz/service/tts/edge"
 	file_helper "github.com/pp-group/file-helper"
 	storage "github.com/pp-group/file-helper/storage"
+
+	"github.com/pp-group/edge-tts-go/biz/service/tts/edge"
 )
 
 type ISpeech interface {
-	GenTTS() error
+	GenTTS() (string, func() error)
 	URL(filename string) (string, error)
 }
 
@@ -22,7 +23,6 @@ type LocalSpeech struct {
 }
 
 func NewLocalSpeech(c *edge.Communicate, folder string) (*LocalSpeech, error) {
-
 	fileStorage, err := file_helper.FileStorageFactory(folder)()
 	if err != nil {
 		return nil, err
@@ -36,13 +36,15 @@ func NewLocalSpeech(c *edge.Communicate, folder string) (*LocalSpeech, error) {
 	return &LocalSpeech{
 		Speech: s,
 	}, nil
-
 }
 
-func (speech *LocalSpeech) GenTTS() error {
-	return gentts(speech.Speech, func() (storage.IWriteBroker, error) {
-		return speech.Writer(speech.FileName, nil)
-	})
+func (speech *LocalSpeech) GenTTS() (string, func() error) {
+	fileName := generateHashName(speech.Text, speech.VoiceLangRegion) + ".mp3"
+	return fileName, func() error {
+		return gentts(speech.Speech, func() (storage.IWriteBroker, error) {
+			return speech.Writer(speech.FileName, nil)
+		})
+	}
 }
 
 func (speech *LocalSpeech) URL(filename string) (string, error) {
@@ -59,7 +61,6 @@ type OssSpeech struct {
 }
 
 func NewOssSpeech(c *edge.Communicate, endpoint, ak, sk, folder, bucket string) (*OssSpeech, error) {
-
 	ossStorage, err := file_helper.OssStorageFactory(endpoint, ak, sk, folder)()
 	if err != nil {
 		return nil, err
@@ -76,13 +77,15 @@ func NewOssSpeech(c *edge.Communicate, endpoint, ak, sk, folder, bucket string) 
 	}, nil
 }
 
-func (speech *OssSpeech) GenTTS() error {
-
-	return gentts(speech.Speech, func() (storage.IWriteBroker, error) {
-		return speech.Writer(speech.FileName, func() interface{} {
-			return speech.bucket
+func (speech *OssSpeech) GenTTS() (string, func() error) {
+	fileName := generateHashName(speech.Text, speech.VoiceLangRegion) + ".mp3"
+	return fileName, func() error {
+		return gentts(speech.Speech, func() (storage.IWriteBroker, error) {
+			return speech.Writer(speech.FileName, func() interface{} {
+				return speech.bucket
+			})
 		})
-	})
+	}
 }
 
 func (speech *OssSpeech) URL(filename string) (string, error) {
@@ -92,8 +95,8 @@ func (speech *OssSpeech) URL(filename string) (string, error) {
 		})
 	})
 }
-func gentts(speech *Speech, brokerFunc func() (storage.IWriteBroker, error)) error {
 
+func gentts(speech *Speech, brokerFunc func() (storage.IWriteBroker, error)) error {
 	fileName := generateHashName(speech.Text, speech.VoiceLangRegion) + ".mp3"
 
 	speech.FileName = fileName
@@ -111,7 +114,6 @@ func gentts(speech *Speech, brokerFunc func() (storage.IWriteBroker, error)) err
 }
 
 func url(brokerFunc func() (storage.IReadBroker, error)) (string, error) {
-
 	broker, err := brokerFunc()
 	if err != nil {
 		return "", err
@@ -133,7 +135,6 @@ func NewSpeech(c *edge.Communicate, storage storage.IStorage, folder string) (*S
 		Folder:      folder,
 	}
 	return s, nil
-
 }
 
 func (s *Speech) gen(broker storage.IWriteBroker) error {
