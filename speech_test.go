@@ -22,7 +22,9 @@ func genTTS(text string) (string, error) {
 		return "", err
 	}
 
-	speech, err := NewLocalSpeech(c, "templateaudio")
+	speech, err := NewLocalSpeech(c, "templateaudio", SpeechConfig{
+		GenerateNameSuffixTimestamp: false,
+	})
 	if err != nil {
 		return "", err
 	}

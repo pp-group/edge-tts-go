@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	file_helper "github.com/pp-group/file-helper"
 	storage "github.com/pp-group/file-helper/storage"
@@ -22,13 +23,13 @@ type LocalSpeech struct {
 	*Speech
 }
 
-func NewLocalSpeech(c *edge.Communicate, folder string) (*LocalSpeech, error) {
+func NewLocalSpeech(c *edge.Communicate, folder string, config SpeechConfig) (*LocalSpeech, error) {
 	fileStorage, err := file_helper.FileStorageFactory(folder)()
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := NewSpeech(c, fileStorage, folder)
+	s, err := NewSpeech(c, fileStorage, folder, config)
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +40,8 @@ func NewLocalSpeech(c *edge.Communicate, folder string) (*LocalSpeech, error) {
 }
 
 func (speech *LocalSpeech) GenTTS() (string, func() error) {
-	fileName := generateHashName(speech.Text, speech.VoiceLangRegion) + ".mp3"
-	return fileName, func() error {
+	speech.generateHashName()
+	return speech.FileName, func() error {
 		return gentts(speech.Speech, func() (storage.IWriteBroker, error) {
 			return speech.Writer(speech.FileName, nil)
 		})
@@ -60,13 +61,13 @@ type OssSpeech struct {
 	bucket string
 }
 
-func NewOssSpeech(c *edge.Communicate, endpoint, ak, sk, folder, bucket string) (*OssSpeech, error) {
+func NewOssSpeech(c *edge.Communicate, endpoint, ak, sk, folder, bucket string, config SpeechConfig) (*OssSpeech, error) {
 	ossStorage, err := file_helper.OssStorageFactory(endpoint, ak, sk, folder)()
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := NewSpeech(c, ossStorage, folder)
+	s, err := NewSpeech(c, ossStorage, folder, config)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +79,8 @@ func NewOssSpeech(c *edge.Communicate, endpoint, ak, sk, folder, bucket string) 
 }
 
 func (speech *OssSpeech) GenTTS() (string, func() error) {
-	fileName := generateHashName(speech.Text, speech.VoiceLangRegion) + ".mp3"
-	return fileName, func() error {
+	speech.generateHashName()
+	return speech.FileName, func() error {
 		return gentts(speech.Speech, func() (storage.IWriteBroker, error) {
 			return speech.Writer(speech.FileName, func() interface{} {
 				return speech.bucket
@@ -97,10 +98,6 @@ func (speech *OssSpeech) URL(filename string) (string, error) {
 }
 
 func gentts(speech *Speech, brokerFunc func() (storage.IWriteBroker, error)) error {
-	fileName := generateHashName(speech.Text, speech.VoiceLangRegion) + ".mp3"
-
-	speech.FileName = fileName
-
 	broker, err := brokerFunc()
 	if err != nil {
 		return err
@@ -121,20 +118,35 @@ func url(brokerFunc func() (storage.IReadBroker, error)) (string, error) {
 	return broker.URL()
 }
 
+type SpeechConfig struct {
+	GenerateNameSuffixTimestamp bool
+}
+
 type Speech struct {
 	*edge.Communicate
+	SpeechConfig
 	storage.IStorage
 	Folder   string
 	FileName string
 }
 
-func NewSpeech(c *edge.Communicate, storage storage.IStorage, folder string) (*Speech, error) {
+func NewSpeech(c *edge.Communicate, storage storage.IStorage, folder string, config SpeechConfig) (*Speech, error) {
 	s := &Speech{
-		Communicate: c,
-		IStorage:    storage,
-		Folder:      folder,
+		SpeechConfig: config,
+		Communicate:  c,
+		IStorage:     storage,
+		Folder:       folder,
 	}
 	return s, nil
+}
+
+func (s *Speech) generateHashName() {
+	extras := make([]string, 0)
+	if s.SpeechConfig.GenerateNameSuffixTimestamp {
+		extras = append(extras, time.Now().Format("20060102150405"))
+	}
+	fileName := generateHashName(s.Text, s.VoiceLangRegion, extras...) + ".mp3"
+	s.FileName = fileName
 }
 
 func (s *Speech) gen(broker storage.IWriteBroker) error {
@@ -172,9 +184,13 @@ func (s *Speech) gen(broker storage.IWriteBroker) error {
 	return nil
 }
 
-func generateHashName(name, voice string) string {
+func generateHashName(name, voice string, extras ...string) string {
 	hash := sha256.Sum256([]byte(name))
-	return fmt.Sprintf("%s_%s", voice, hex.EncodeToString(hash[:]))
+	fullName := fmt.Sprintf("%s_%s", voice, hex.EncodeToString(hash[:]))
+	for _, suffix := range extras {
+		fullName += "_" + suffix
+	}
+	return fullName
 }
 
 type OssSpeechFactory struct {
@@ -195,9 +211,9 @@ func NewOssSpeechFactory(endpoint, ak, sk, bucket, folder string) *OssSpeechFact
 	}
 }
 
-func (factory *OssSpeechFactory) OssSpeech(c *edge.Communicate, folder string) (*OssSpeech, error) {
+func (factory *OssSpeechFactory) OssSpeech(c *edge.Communicate, folder string, config SpeechConfig) (*OssSpeech, error) {
 	if folder != "" {
-		return NewOssSpeech(c, factory.endpoint, factory.ak, factory.sk, folder, factory.bucket)
+		return NewOssSpeech(c, factory.endpoint, factory.ak, factory.sk, folder, factory.bucket, config)
 	}
-	return NewOssSpeech(c, factory.endpoint, factory.ak, factory.sk, factory.folder, factory.bucket)
+	return NewOssSpeech(c, factory.endpoint, factory.ak, factory.sk, factory.folder, factory.bucket, config)
 }
